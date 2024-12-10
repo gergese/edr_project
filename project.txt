@@ -1,0 +1,7 @@
+edr 구현
+로그 수집하고 가공시키고 elk에 올리기
+로그를 실시간으로 elk에 올릴 수 있게
+윈도우 1개 리눅스 1개? 아니면 윈도우 1개
+너무 빨리 끝나거나 오랫동안 실행되는 프로세스 확인?
+
+Get-WinEvent -LogName Application | ForEach-Object { $_.ToXml()  # XML 형식으로 변환 } | Set-Content -Path "D:\script\edr_project\event_logs.xml"
