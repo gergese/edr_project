@@ -1,9 +1,10 @@
 import win32evtlog
+import json
 
 
-def save_windows_logs_to_txt(log_type, output_file):
+def save_windows_logs_to_json(log_type, output_file):
     """
-    Windows 이벤트 로그를 읽어서 텍스트 파일로 저장합니다.
+    Windows 이벤트 로그를 읽어서 JSON 파일로 저장합니다.
 
     Args:
         log_type (str): 로그 종류 (예: 'Application', 'System', 'Security').
@@ -14,48 +15,41 @@ def save_windows_logs_to_txt(log_type, output_file):
         log_handle = win32evtlog.OpenEventLog(None, log_type)
         print(f"Processing logs from: {log_type}")
 
-        # 파일에 쓰기 시작
+        logs = []  # 모든 로그를 저장할 리스트
+        flags = (
+            win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
+        )
+
+        while True:
+            events = win32evtlog.ReadEventLog(log_handle, flags, 0)
+            if not events:
+                break
+
+            for event in events:
+                # 각 이벤트를 딕셔너리로 변환
+                log_entry = {
+                    "EventID": event.EventID & 0xFFFF,  # 실제 Event ID 추출
+                    "RecordNumber": event.RecordNumber,
+                    "SourceName": event.SourceName,
+                    "TimeGenerated": event.TimeGenerated.strftime("%Y-%m-%d %H:%M:%S"),
+                    "TimeWritten": event.TimeWritten.strftime("%Y-%m-%d %H:%M:%S"),
+                    "EventType": event.EventType,
+                    "EventCategory": event.EventCategory,
+                    "ComputerName": event.ComputerName,
+                    "SID": str(event.Sid) if event.Sid else None,
+                    "MessageData": event.StringInserts if event.StringInserts else None,
+                    "AdditionalData": (
+                        event.Data.decode("utf-8", errors="ignore")
+                        if event.Data
+                        else None
+                    ),
+                }
+
+                logs.append(log_entry)  # 로그 리스트에 추가
+
+        # JSON 파일로 저장
         with open(output_file, "w", encoding="utf-8") as f:
-            f.write(f"Logs from {log_type}:\n\n")
-            flags = (
-                win32evtlog.EVENTLOG_BACKWARDS_READ
-                | win32evtlog.EVENTLOG_SEQUENTIAL_READ
-            )
-
-            while True:
-                events = win32evtlog.ReadEventLog(log_handle, flags, 0)
-                if not events:
-                    break
-                for event in events:
-                    event_id = event.EventID & 0xFFFF  # 실제 Event ID 추출
-                    f.write(f"Event ID: {event_id}\n")
-                    f.write(f"Record Number: {event.RecordNumber}\n")
-                    f.write(f"Source Name: {event.SourceName}\n")
-                    f.write(f"Time Generated: {event.TimeGenerated}\n")
-                    f.write(f"Time Written: {event.TimeWritten}\n")
-                    f.write(f"Event Type: {event.EventType}\n")
-                    f.write(f"Event Category: {event.EventCategory}\n")
-                    f.write(f"Computer Name: {event.ComputerName}\n")
-
-                    # SID 처리
-                    if event.Sid is not None:
-                        f.write(f"SID: {event.Sid}\n")
-                    else:
-                        f.write("SID: None\n")
-
-                    # 메시지 (StringInserts)
-                    if event.StringInserts:
-                        f.write(f"Message Data: {event.StringInserts}\n")
-                    else:
-                        f.write("Message Data: None\n")
-
-                    # 추가 데이터 (Data)
-                    if event.Data:
-                        f.write(f"Additional Data: {event.Data}\n")
-                    else:
-                        f.write("Additional Data: None\n")
-
-                    f.write("=" * 50 + "\n")
+            json.dump(logs, f, indent=4, ensure_ascii=False)
 
         print(f"Logs saved to {output_file}")
 
@@ -67,6 +61,6 @@ def save_windows_logs_to_txt(log_type, output_file):
 
 # 로그 종류와 파일 경로를 지정하여 실행
 log_type = "Application"  # "System", "Security" 등을 사용할 수 있음
-output_file = "application_logs.txt"
+output_file = "application_logs.json"
 
-save_windows_logs_to_txt(log_type, output_file)
+save_windows_logs_to_json(log_type, output_file)
