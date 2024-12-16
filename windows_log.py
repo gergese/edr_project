@@ -36,7 +36,7 @@ def save_windows_logs_to_json(log_type, output_file):
                     "EventType": event.EventType,
                     "EventCategory": event.EventCategory,
                     "ComputerName": event.ComputerName,
-                    "SID": str(event.Sid) if event.Sid else None,
+                    "SID": (str(event.Sid)).split(":")[1] if event.Sid else None,
                     "MessageData": event.StringInserts if event.StringInserts else None,
                     "AdditionalData": (
                         event.Data.decode("utf-8", errors="ignore")
@@ -44,7 +44,6 @@ def save_windows_logs_to_json(log_type, output_file):
                         else None
                     ),
                 }
-
                 logs.append(log_entry)  # 로그 리스트에 추가
 
         # JSON 파일로 저장
